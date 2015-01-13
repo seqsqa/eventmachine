@@ -164,3 +164,4 @@ SRC
 TRY_LINK.sub!('$(CXX)', '$(CC)')
 
 create_makefile "rubyeventmachine"
+

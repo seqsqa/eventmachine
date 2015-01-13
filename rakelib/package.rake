@@ -1,4 +1,6 @@
-require 'rake/gempackagetask'
+require 'rubygems'
+require 'rubygems/package_task'
+
 begin
   require 'rake/extensiontask'
   require 'rake/javaextensiontask'
@@ -12,7 +14,7 @@ rake-compiler gem seems to be missing. Please install it with
   MSG
 end
 
-Rake::GemPackageTask.new(GEMSPEC) do |pkg|
+Gem::PackageTask.new(GEMSPEC) do |pkg|
 end
 
 if RUBY_PLATFORM =~ /java/
@@ -84,15 +86,15 @@ def gem_cmd(action, name, *args)
 end
 
 Rake::Task[:clean].enhance [:clobber_package]
-
-namespace :gem do
-  desc 'Install gem (and sudo if required)'
-  task :install => :package do
-    gem_cmd(:install, "pkg/#{GEMSPEC.name}-#{GEMSPEC.version}.gem")
-  end
-
-  desc 'Uninstall gem (and sudo if required)'
-  task :uninstall do
-    gem_cmd(:uninstall, "#{GEMSPEC.name}", "-v=#{GEMSPEC.version}")
-  end
-end
+#
+#namespace :gem do
+#  desc 'Install gem (and sudo if required)'
+#  task :install => :package do
+#    gem_cmd(:install, "pkg/#{GEMSPEC.name}-#{GEMSPEC.version}.gem")
+#  end
+#
+#  desc 'Uninstall gem (and sudo if required)'
+#  task :uninstall do
+#    gem_cmd(:uninstall, "#{GEMSPEC.name}", "-v=#{GEMSPEC.version}")
+#  end
+#end
