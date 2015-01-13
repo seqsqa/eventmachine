@@ -66,17 +66,20 @@ end
 add_define 'BUILD_FOR_RUBY'
 add_define 'HAVE_RBTRAP' if have_var('rb_trap_immediate', ['ruby.h', 'rubysig.h'])
 add_define "HAVE_TBR" if have_func('rb_thread_blocking_region')# and have_macro('RUBY_UBF_IO', 'ruby.h')
+add_define "HAVE_RB_THREAD_CALL_WITHOUT_GVL" if have_header('ruby/thread.h') && have_func('rb_thread_call_without_gvl', 'ruby/thread.h')
 add_define "HAVE_INOTIFY" if inotify = have_func('inotify_init', 'sys/inotify.h')
 add_define "HAVE_OLD_INOTIFY" if !inotify && have_macro('__NR_inotify_init', 'sys/syscall.h')
 add_define 'HAVE_WRITEV' if have_func('writev', 'sys/uio.h')
+add_define 'HAVE_RB_THREAD_FD_SELECT' if have_func('rb_thread_fd_select')
 
-have_func('rb_thread_check_ints')
+have_func('rb_wait_for_single_fd')
+have_func('rb_enable_interrupt')
 have_func('rb_time_new')
 
 # Minor platform details between *nix and Windows:
 
 if RUBY_PLATFORM =~ /(mswin|mingw|bccwin)/
-  GNU_CHAIN = ENV['CROSS_COMPILING'] or $1 == 'mingw'
+  GNU_CHAIN = ENV['CROSS_COMPILING'] || $1 == 'mingw'
   OS_WIN32 = true
   add_define "OS_WIN32"
 else
@@ -87,6 +90,15 @@ else
   add_define "HAVE_KQUEUE" if have_header("sys/event.h") and have_header("sys/queue.h")
 end
 
+# Adjust number of file descriptors (FD) on Windows
+
+if RbConfig::CONFIG["host_os"] =~ /mingw/
+  found = RbConfig::CONFIG.values_at("CFLAGS", "CPPFLAGS").
+    any? { |v| v.include?("FD_SETSIZE") }
+
+  add_define "FD_SETSIZE=32767" unless found
+end
+
 # Main platform invariances:
 
 case RUBY_PLATFORM
@@ -95,7 +107,8 @@ when /mswin32/, /mingw32/, /bccwin32/
   check_libs(%w[kernel32 rpcrt4 gdi32], true)
 
   if GNU_CHAIN
-    CONFIG['LDSHARED'] = "$(CXX) -shared -lstdc++"
+    # CONFIG['LDSHARED'] = "$(CXX) -shared -lstdc++"
+    CONFIG['LDSHAREDXX'] = "$(CXX) -shared -static-libgcc -static-libstdc++"
   else
     $defs.push "-EHs"
     $defs.push "-GR"
@@ -159,8 +172,9 @@ TRY_LINK.sub!('$(CC)', '$(CXX)')
 add_define 'HAVE_MAKE_PAIR' if try_link(<<SRC, '-lstdc++')
   #include <utility>
   using namespace std;
-  int main(){ pair<int,int> tuple = make_pair(1,2); }
+  int main(){ pair<const int,int> tuple = make_pair(1,2); }
 SRC
 TRY_LINK.sub!('$(CXX)', '$(CC)')
 
 create_makefile "rubyeventmachine"
+
